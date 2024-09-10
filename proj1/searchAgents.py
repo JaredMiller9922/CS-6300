@@ -285,9 +285,12 @@ class CornersProblem(search.SearchProblem):
             if not startingGameState.hasFood(*corner):
                 print('Warning: no food in corner ' + str(corner))
         self._expanded = 0 # DO NOT CHANGE; Number of search nodes expanded
+
         # Please add any code here which you would like to use
         # in initializing the problem
+
         "*** YOUR CODE HERE ***"
+        self.costFn = lambda x:1
 
     def getStartState(self):
         """
@@ -295,15 +298,22 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # This sets the template for how every other state will look
+        # Therefore here we must encode ALL state information
+        # We use a frozenset because a frozenset is hashable and a set and list are not
+        return (self.startingPosition, frozenset())
 
     def isGoalState(self, state):
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Unpack the visited list
+        _,curCorners = state
+        return len(curCorners) == 4
+         
 
+    # This is how we explore a state
     def getSuccessors(self, state):
         """
         Returns successor states, the actions they require, and a cost of 1.
@@ -325,7 +335,29 @@ class CornersProblem(search.SearchProblem):
             #   hitsWall = self.walls[nextx][nexty]
 
             "*** YOUR CODE HERE ***"
+            # Two levels of unpacking needed because (x,y), set()
+            pos,cur_corners = state 
+            x,y = pos
 
+
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+            hitsWall = self.walls[nextx][nexty]
+            if not hitsWall :
+                state_pos = (nextx, nexty)
+
+                # Check if the current state is a corner
+                for corner in self.corners:
+                    x_c, y_c = corner
+                    if state_pos == (x_c, y_c):
+                        # We are using a frozen set so we must use union op
+                        # We also have to cast the corner tuple to a frozenset
+                        cur_corners = cur_corners | frozenset([corner])
+
+                nextState = (state_pos, cur_corners)
+                cost = self.costFn(nextState)
+                successors.append( (nextState, action, cost) )
+        
         self._expanded += 1 # DO NOT CHANGE
         return successors
 
@@ -360,7 +392,58 @@ def cornersHeuristic(state, problem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    # Manhattan Distance to closest corner
+    # mindistance = 999999 
+    # for corner in corners : 
+        # Remembering that we defined the state to be a (x,y, list)
+       # pos,_ = state
+       # x1, y1 = pos
+       # x2, y2 = corner
+       # manhattanDistance = abs(x1 - x2) + abs(y1 - y2)
+       # if manhattanDistance < mindistance :
+       #     mindistance = manhattanDistance
+    # return mindistance
+
+    # Visiting just the closest corner isn't good enough! A good hueristic should
+    # estimate the total cost of finishing the problem so it can have more information
+    # while finding the paths. So lets find a way to calculate the distance from the 
+    # closest corner -> the next closest -> the next closest -> the next closest
+
+    # Calculate the closest unexplored corner
+    curPos, visitedCorners = state
+    # Get list of unvisited corners
+    # Syntax: [expression for item in iterable if condition]
+    unvistedCornersSet = set([corner for corner in corners if corner not in visitedCorners])
+
+    # if all corners are visisted h=0
+    if len(unvistedCornersSet) == 0 :
+        return 0
+
+    heuristicCost = 0
+    # Loop to calculate hueristic 
+    while unvistedCornersSet : 
+        # Calculate distance to closest corner to help with estimating the true cost
+        closestCorner, closestCornerDistance = min(
+            ((corner, manhattanDistance(curPos, corner)) for corner in unvistedCornersSet),
+            # Tells the min function to compare the second item passed in which is the current posistion
+            key=lambda x: x[1]
+        )
+
+        # We know the closest corner's manhattanDistance add it to our h value
+        heuristicCost += closestCornerDistance
+
+        # We update the posistion to be reaching that corner so we can finish calculating the heuristic
+        curPos = closestCorner
+        unvistedCornersSet.remove(closestCorner)
+
+    
+    return heuristicCost
+
+def manhattanDistance(pos1, pos2) :
+    x1, y1 = pos1
+    x2, y2 = pos2
+
+    return abs(x1 - x2) + abs(y1 - y2)
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -454,7 +537,108 @@ def foodHeuristic(state, problem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
-    return 0
+    # ------------------- Greedy Approach ------------------- #
+    # Have we eaten all the food 
+    # foodSet = set(foodGrid.asList())
+
+    # if len(foodSet) == 0 :
+    #     return 0
+    # 
+    # # Keep track of the total h-cost make a temporary variable for posistion
+    # heuristicCost = 0
+
+    # # Loop to calculate the heuristic cost
+    # while foodSet : 
+    #     closestFood, closestFoodDistance = min(
+    #         ((food, manhattanDistance(position, food)) for food in foodSet), 
+    #             key = lambda x:x[1]
+    #         )
+    #     # Now we have the closest food lets add it to our cost
+    #     heuristicCost += closestFoodDistance
+
+    #     # Now to calculate the next part of the hueristic pretend we are at that space
+    #     position = closestFood
+    #     # Must remove so we don't loop forever
+    #     foodSet.remove(closestFood)
+
+    # return heuristicCost
+
+    # ------------------- MST Approach Start From Pac-man ------------------- #
+    # We are going to use Primm's algorithm to construct an MST
+    # pq = util.PriorityQueue()
+    # visitedNodes = set()
+    # mstCost = 0
+
+    # foodList = foodGrid.asList()
+
+    # # Probably isn't important but if there isn't any food don't have an h value
+    # if len(foodList) == 0 :
+    #     return 0
+
+    # # Add all edges
+    # for food in foodList : 
+    #     distance = manhattanDistance(position, food)
+    #     pq.push((position, food), distance)
+
+    # # Until we visit all nodes
+    # while len(visitedNodes) < len(foodList) : 
+    #     # Pop the lowest edge and add it to the tree
+    #     node1, node2 = pq.pop()
+
+    #     # Don't process if its already been processed
+    #     if node2 in visitedNodes :
+    #         continue
+
+    #     # Only add the cost if the node hasn't been visited
+    #     mstCost += manhattanDistance(node1, node2)
+
+    #     # mark the node as visited
+    #     visitedNodes.add(node2)
+
+    #     # Add all neighbors to the pq
+    #     for neighbor in foodList :
+    #         if neighbor not in visitedNodes : 
+    #             neighborDistance = manhattanDistance(node2, neighbor) 
+    #             pq.push((node2, neighbor), neighborDistance)
+
+    # return mstCost
+    pq = util.PriorityQueue()
+    visitedNodes = set()
+    mstCost = 0
+
+    foodList = foodGrid.asList()
+
+    # If there is no food, return a heuristic of 0
+    if len(foodList) == 0:
+        return 0
+
+    # Start Prim's algorithm from the first food item (or the nearest one)
+    startFood = foodList[0]
+    visitedNodes.add(startFood)
+
+    # Add all edges from the startFood to the priority queue
+    for food in foodList:
+        if food != startFood:
+            pq.push((startFood, food), mazeDistance(startFood, food, problem.startingGameState))
+
+    # Prim's algorithm to build MST
+    while len(visitedNodes) < len(foodList):
+        node1, node2 = pq.pop()
+
+        if node2 in visitedNodes:
+            continue
+
+        mstCost += mazeDistance(node1, node2, problem.startingGameState)
+        visitedNodes.add(node2)
+
+        # Add all edges from the newly added node to the remaining nodes
+        for neighbor in foodList:
+            if neighbor not in visitedNodes:
+                pq.push((node2, neighbor), mazeDistance(node2, neighbor, problem.startingGameState))
+
+    # Add the distance from Pac-Man's position to the nearest food
+    minDistanceToFood = min(mazeDistance(position, food, problem.startingGameState) for food in foodList)
+    return mstCost + minDistanceToFood
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -485,7 +669,8 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return search.breadthFirstSearch(problem)
+
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -521,7 +706,11 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # if (x, y in self.food.asList()) :
+        #     return True
+
+        # return False
+        return (x,y) in self.food.asList()
 
 def mazeDistance(point1, point2, gameState):
     """

@@ -102,14 +102,12 @@ def depthFirstSearch(problem):
         return []
 
     # Add the start state to the frontier
-    stack.update((problem.getStartState(), []))
+    stack.push((problem.getStartState(), []))
     
     # While stack isn't empty
     while not stack.isEmpty() :
         # Pop the stack and explore popped state 
         cur_state, cur_move_list = stack.pop()
-        print(cur_state)
-        print(cur_move_list)
 
         # Is the state the goal
         if problem.isGoalState(cur_state) : 
@@ -119,7 +117,7 @@ def depthFirstSearch(problem):
         if cur_state not in explored:
             for successor in problem.getSuccessors(cur_state) : 
                 # Push state : succesor[0] and action : succesor[1]
-                stack.update((successor[0], cur_move_list + [successor[1]]))
+                stack.push((successor[0], cur_move_list + [successor[1]]))
         # Mark state as explored
         explored.add(cur_state)
 
@@ -142,8 +140,6 @@ def breadthFirstSearch(problem):
     while not queue.isEmpty() :
         # Pop the queue and explore popped state 
         cur_state, cur_move_list = queue.pop()
-        print(cur_state)
-        print(cur_move_list)
 
         # Is the state the goal
         if problem.isGoalState(cur_state) : 
@@ -184,9 +180,8 @@ def uniformCostSearch(problem):
         if cur_state not in explored:
             for successor in problem.getSuccessors(cur_state) : 
                 # Push state : succesor[0] and action : succesor[1]
-                p_queue.update((successor[0], 
-                                cur_move_list + [successor[1]], cur_cost_to_come + successor[2]), 
-                                successor[2])
+                p_queue.update((successor[0], cur_move_list + [successor[1]], cur_cost_to_come + successor[2]), 
+                                cur_cost_to_come + successor[2])
         # Mark state as explored
         explored.add(cur_state)
 
