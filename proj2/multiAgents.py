@@ -370,7 +370,46 @@ def betterEvaluationFunction(currentGameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    newPos = currentGameState.getPacmanPosition() 
+    newFood = currentGameState.getFood()
+    newGhostStates = currentGameState.getGhostStates()
+    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+    stateValue = 0
+
+    # Reward being closer to food
+    if newFood.asList():
+        closestFood = min(
+            manhattanDistance(newPos, futurePos) 
+            for futurePos in newFood.asList()
+        ) 
+        stateValue += 5 / closestFood if closestFood != 0 else 0
+
+    # Get ghost posistions so Pacman can be rewarded or punished
+    ghostPosistions = [ghostState.getPosition() for ghostState in newGhostStates]
+
+    # Punish for being closer to ghosts
+    if ghostPosistions :
+        for curGhostPos in ghostPosistions :
+            curGhostDis = manhattanDistance(newPos, curGhostPos)
+            stateValue -= 3 / curGhostDis if curGhostDis != 0 else 0
+
+    # Punish Pacman if his next posistion is a ghost posistion
+    if newPos in ghostPosistions :
+        stateValue -= 50
+
+    # What score do we have in the next state
+    stateValue += currentGameState.getScore()
+
+    # Punish pacman for staying still
+    if currentGameState.getPacmanPosition() == newPos :
+        stateValue -= 1
+
+    # Reward for increasing scared times
+    for scaredTime in newScaredTimes :
+        stateValue += scaredTime / 2
+
+    # return successorGameState.getScore()
+    return stateValue 
 
 # Abbreviation
 better = betterEvaluationFunction
