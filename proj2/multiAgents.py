@@ -409,7 +409,7 @@ def betterEvaluationFunction(currentGameState):
         stateValue += scaredTime / 2
 
     # return successorGameState.getScore()
-    return stateValue 
+    return stateValue
 
 # Abbreviation
 better = betterEvaluationFunction
