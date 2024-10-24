@@ -27,6 +27,7 @@ class PerceptronModel(object):
         Returns: a node containing a single number (the score)
         """
         "*** YOUR CODE HERE ***"
+        return nn.DotProduct(x, self.get_weights())
 
     def get_prediction(self, x):
         """
@@ -35,12 +36,29 @@ class PerceptronModel(object):
         Returns: 1 or -1
         """
         "*** YOUR CODE HERE ***"
+        dP = self.run(x)
+        dPS = nn.as_scalar(dP)
+        return 1 if dPS >= 0 else -1
 
     def train(self, dataset):
         """
         Train the perceptron until convergence.
         """
         "*** YOUR CODE HERE ***"
+        batch_size = 1
+        accurate = False
+        # Loop until we are 100 percent accurate
+        while (accurate == False) : 
+            accurate = True
+            # Update any missclassified values from the dataset
+            for x,y in dataset.iterate_once(batch_size) : 
+                predictedLabel = self.get_prediction(x)
+                actualLabel = nn.as_scalar(y)
+                if predictedLabel != actualLabel :
+                    # We predicted incorrectly so we need to update weights
+                    accurate = False
+                    # Preform the perceptron update rule w' = w + yx. Scale x by the true value.
+                    self.w.update(x, actualLabel)
 
 class RegressionModel(object):
     """
@@ -51,6 +69,14 @@ class RegressionModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        # Layer 1
+        hLNeurons = 250 
+        self.hLM = nn.Parameter(1, hLNeurons)
+        self.hLB = nn.Parameter(1, hLNeurons)
+
+        # Layer 2 (After ReLU)
+        self.outM = nn.Parameter(hLNeurons, 1)
+        self.outB = nn.Parameter(1, 1)
 
     def run(self, x):
         """
@@ -62,6 +88,16 @@ class RegressionModel(object):
             A node with shape (batch_size x 1) containing predicted y-values
         """
         "*** YOUR CODE HERE ***"
+        # Our run method has to go through all the portions of the layer
+        # Layer 1
+        Layer1 = nn.Linear(x, self.hLM)
+        Layer1wBias = nn.AddBias(Layer1, self.hLB)
+        # Relu Layer
+        ReluLayer = nn.ReLU(Layer1wBias)
+        # Output Layer
+        OutputLayer = nn.Linear(ReluLayer, self.outM)
+        OutputLayerwBias = nn.AddBias(OutputLayer, self.outB)
+        return OutputLayerwBias
 
     def get_loss(self, x, y):
         """
@@ -74,13 +110,32 @@ class RegressionModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        prediction = self.run(x)
+        return nn.SquareLoss(prediction, y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        # The goal of our training should be to minimize our loss 
+        batch_size = 50
+        learningRate = 0.1
+        maxLoss = float('inf')
+        threshold = 0.02
+        while (maxLoss > threshold) :
+            maxLoss = 0
+            # Calculate our loss 
+            for x,y in dataset.iterate_once(batch_size) : 
+                loss = self.get_loss(x, y) 
+                batch_loss = nn.as_scalar(loss)
+                maxLoss = max(batch_loss, maxLoss)
+                grad_wrt_m, grad_wrt_b = nn.gradients(loss, [self.hLM, self.hLB])
+                # Update our parameters make sure and update the negative! We go against the gradient
+                self.hLM.update(grad_wrt_m, -learningRate)
+                self.hLB.update(grad_wrt_b, -learningRate)
 
+# TODO: As needed we could easily add another hidden layer
 class DigitClassificationModel(object):
     """
     A model for handwritten digit classification using the MNIST dataset.
@@ -98,6 +153,18 @@ class DigitClassificationModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        # Layer 1
+        hLNeurons = 350
+        inputNeurons = 784
+        self.hLM = nn.Parameter(inputNeurons, hLNeurons)
+        # self.hLB = nn.Parameter(inputNeurons, hLNeurons)
+        self.hLB = nn.Parameter(1, hLNeurons)
+
+        # Layer 2 (After ReLU)
+        outLNeurons = 10
+        self.outM = nn.Parameter(hLNeurons, outLNeurons)
+        self.outB = nn.Parameter(1, 10)
+
 
     def run(self, x):
         """
@@ -114,6 +181,16 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        # Our run method has to go through all the portions of the layer
+        # Layer 1
+        Layer1 = nn.Linear(x, self.hLM)
+        Layer1wBias = nn.AddBias(Layer1, self.hLB)
+        # Relu Layer
+        ReluLayer = nn.ReLU(Layer1wBias)
+        # Output Layer
+        OutputLayer = nn.Linear(ReluLayer, self.outM)
+        OutputLayerwBias = nn.AddBias(OutputLayer, self.outB)
+        return OutputLayerwBias
 
     def get_loss(self, x, y):
         """
@@ -129,12 +206,24 @@ class DigitClassificationModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        predictions = self.run(x)
+        return nn.SoftmaxLoss(predictions, y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        batch_size = 100 
+        learningRate = 0.8
+        while (dataset.get_validation_accuracy() < 0.98) :
+            # Calculate our loss 
+            for x,y in dataset.iterate_once(batch_size) : 
+                loss = self.get_loss(x, y) 
+                grad_wrt_m, grad_wrt_b = nn.gradients(loss, [self.hLM, self.hLB])
+                # Update our parameters make sure and update the negative! We go against the gradient
+                self.hLM.update(grad_wrt_m, -learningRate)
+                self.hLB.update(grad_wrt_b, -learningRate)
 
 class LanguageIDModel(object):
     """
