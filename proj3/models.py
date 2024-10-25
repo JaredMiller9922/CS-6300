@@ -243,6 +243,21 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        # HL1
+        input_features = 47 # This is because xs is batch_size x 47. The input has 47 features because of the 1 hot encoding 
+        hidden_layer_neurons = 300 
+        self.batch_size = 100 
+        self.learningRate = 0.1 
+        self.w1 = nn.Parameter(input_features, hidden_layer_neurons) 
+        self.b1 = nn.Parameter(1, hidden_layer_neurons)
+
+        # HL2 (After ReLU)
+        output_layer_neurons = 5
+        self.w2 = nn.Parameter(hidden_layer_neurons, output_layer_neurons)
+        self.b2 = nn.Parameter(1, output_layer_neurons)
+
+        # For RNN 
+        self.w_hidden = nn.Parameter(hidden_layer_neurons, hidden_layer_neurons)
 
     def run(self, xs):
         """
@@ -274,6 +289,43 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        # run f_init
+        hidden_i = self.run_init(xs[0])
+
+        # run f for all inputs len(xs) - 1
+        for x in xs[1:] :
+            #Layer1 = nn.Linear(x_init, self.w1)
+            # Layer_i = nn.Add(nn.Linear(x, self.w1), nn.Linear(hidden_i, self.w_hidden)) 
+            lin1 = nn.Linear(x, self.w1)
+            lin2 = nn.Linear(hidden_i, self.w_hidden)
+            Layer_i = nn.Add(lin1, lin2)
+
+            Layer1wBias = nn.AddBias(Layer_i, self.b1)
+            # Relu Layer
+            hidden_i = nn.ReLU(Layer1wBias)
+
+        # Output Layer
+        OutputLayer = nn.Linear(hidden_i, self.w2)
+        OutputLayerwBias = nn.AddBias(OutputLayer, self.b2)
+        return OutputLayerwBias 
+
+    def run_init(self, x_init) :
+        # Run a regular network
+        # Our run method has to go through all the portions of the layer
+        # Layer 1
+        Layer1 = nn.Linear(x_init, self.w1)
+        Layer1wBias = nn.AddBias(Layer1, self.b1)
+        # Relu Layer
+        ReluLayer = nn.ReLU(Layer1wBias)
+        # We return the Relu layer so it can be used in later calculations
+        return ReluLayer 
+
+        # print("size of ReluLayer")
+        # print(ReluLayer)
+        # # Output Layer
+        # OutputLayer = nn.Linear(ReluLayer, self.w2)
+        # OutputLayerwBias = nn.AddBias(OutputLayer, self.b2)
+        # return OutputLayerwBias
 
     def get_loss(self, xs, y):
         """
@@ -290,9 +342,25 @@ class LanguageIDModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        prediction = self.run(xs)
+        return nn.SoftmaxLoss(prediction, y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        batch_size = self.batch_size 
+        learningRate = self.learningRate 
+        while (dataset.get_validation_accuracy() < 0.85) :
+            # Calculate our loss 
+            for x,y in dataset.iterate_once(batch_size) : 
+                loss = self.get_loss(x, y) 
+                # grad_wrt_m, grad_wrt_b = nn.gradients(loss, [self.hLM, self.hLB])
+                grad_wrt_w1, grad_wrt_b1, grad_wrt_w2, grad_wrt_b2, grad_wrt_w_hidden = nn.gradients(loss, [self.w1, self.b1, self.w2, self.b2, self.w_hidden])
+                # Update our parameters make sure and update the negative! We go against the gradient
+                self.w1.update(grad_wrt_w1, -learningRate)
+                self.b1.update(grad_wrt_b1, -learningRate)
+                self.w2.update(grad_wrt_w2, -learningRate)
+                self.b2.update(grad_wrt_b2, -learningRate)
+                self.w_hidden.update(grad_wrt_w_hidden, -learningRate)
