@@ -216,7 +216,7 @@ class DigitClassificationModel(object):
         "*** YOUR CODE HERE ***"
         batch_size = 100 
         learningRate = 0.8
-        while (dataset.get_validation_accuracy() < 0.98) :
+        while (dataset.get_validation_accuracy() < 0.9805) :
             # Calculate our loss 
             for x,y in dataset.iterate_once(batch_size) : 
                 loss = self.get_loss(x, y) 
@@ -352,7 +352,7 @@ class LanguageIDModel(object):
         "*** YOUR CODE HERE ***"
         batch_size = self.batch_size 
         learningRate = self.learningRate 
-        while (dataset.get_validation_accuracy() < 0.85) :
+        while (dataset.get_validation_accuracy() < 0.87) :
             # Calculate our loss 
             for x,y in dataset.iterate_once(batch_size) : 
                 loss = self.get_loss(x, y) 
