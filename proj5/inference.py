@@ -75,7 +75,17 @@ class DiscreteDistribution(dict):
         {}
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        # Sum all values
+        total = self.total()
+
+        # If the total value of the distribution is 0
+        if (total == 0):
+            return
+
+        # Normalize each value
+        for key in self.keys():
+            self[key] = self[key] / total
+
 
     def sample(self):
         """
@@ -99,7 +109,13 @@ class DiscreteDistribution(dict):
         0.0
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        weight_dict = self.copy()
+        # Turn both our keys and weights into lists so they can be used in random.choices
+        keys = list(weight_dict.keys())
+        weights = list(weight_dict.values())
+        # We only want one sample. random.choices returns a list so we index[0] to get first element
+        return random.choices(keys, weights=weights, k=1)[0]
+        
 
 
 class InferenceModule:
@@ -169,7 +185,26 @@ class InferenceModule:
         Return the probability P(noisyDistance | pacmanPosition, ghostPosition).
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        # NONE means the jail posistion! 
+
+        # Handling special jail case
+        if (noisyDistance == None):
+            if (ghostPosition == jailPosition):
+                # We are certain that the ghost is in jail
+                return 1
+            else :
+                # We know the ghost is not in jail
+                return 0
+
+        else: 
+            # This means the ghost must be in jail. No matter what noisyDistance is passed in it will be incorrect
+            if (ghostPosition == jailPosition):
+                return 0
+
+            # Calculate the manhattanDistance
+            true_dist = manhattanDistance(pacmanPosition, ghostPosition)
+            # Return P(noisyDistance | pacmanPosition, ghostPosition) using given distribution based off of noisyDistance and true_dist
+            return busters.getObservationProbability(noisyDistance, true_dist)
 
     def setGhostPosition(self, gameState, ghostPosition, index):
         """
@@ -277,7 +312,17 @@ class ExactInference(InferenceModule):
         position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        # set variables to be used later
+        pacman_pos = gameState.getPacmanPosition()
+        jail_pos = self.getJailPosition()
+        noisy_distance = observation
+        legal_posistions = self.allPositions
+
+        # each time we get a new observation we want to update all of our beliefs
+        for pos in legal_posistions :
+            # use the method we previously created to find the probability of an observation given a certain state P(z_k | x_k)
+            observation_prob = self.getObservationProb(noisy_distance, pacman_pos, pos, jail_pos)
+            self.beliefs[pos] = observation_prob * self.beliefs[pos]
 
         self.beliefs.normalize()
 
