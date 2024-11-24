@@ -336,7 +336,23 @@ class ExactInference(InferenceModule):
         current position is known.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        legal_posistions = self.allPositions
+        # Create new beliefs. We are recalculating all beliefs here
+        new_beliefs = DiscreteDistribution()
+
+        for old_pos in legal_posistions :
+            # Get P(x+1 | x)
+            newPosDist = self.getPositionDistribution(gameState, old_pos)
+
+            # We want to sum over all the probabilities to get an accurate belief
+            # for key in newPosDist.keys() :
+                # new_beliefs[key] += newPosDist[key] * self.beliefs[pos_t]
+            for new_pos, new_pos_prob in newPosDist.items() : 
+                new_beliefs[new_pos] += new_pos_prob * self.beliefs[old_pos]
+
+        self.beliefs = new_beliefs
+        self.beliefs.normalize()
+
 
     def getBeliefDistribution(self):
         return self.beliefs
